@@ -310,12 +310,12 @@ class RealtimeCryptoPatternAnalyzer:
             
             for index, row in self.df.iterrows():
                 record = {
-                    'date': row['Date'],
-                    'open': float(row['Open']),
-                    'high': float(row['High']),
-                    'low': float(row['Low']),
-                    'close': float(row['Close']),
-                    'signal': int(row['signal'])
+                    'Date': row['Date'],
+                    'Open': float(row['Open']),
+                    'High': float(row['High']),
+                    'Low': float(row['Low']),
+                    'Close': float(row['Close']),
+                    'confidence': int(row['signal'])
                 }
                 
                 data_to_save.append(record)
