@@ -315,7 +315,8 @@ class RealtimeCryptoPatternAnalyzer:
                     'High': float(row['High']),
                     'Low': float(row['Low']),
                     'Close': float(row['Close']),
-                    'confidence': int(row['signal'])
+                    'confidence': int(row['signal']),
+                    'symbol': symbol
                 }
                 
                 data_to_save.append(record)
@@ -323,8 +324,8 @@ class RealtimeCryptoPatternAnalyzer:
             # Lưu vào MongoDB
             if data_to_save:
                 # Xóa dữ liệu cũ
-                collection.delete_many({})
-                
+                collection.delete_many({'symbol': symbol})
+
                 # Chèn dữ liệu mới
                 result = collection.insert_many(data_to_save)
                 return len(result.inserted_ids)
@@ -381,11 +382,10 @@ async def ping():
         analyzer = RealtimeCryptoPatternAnalyzer()
         
         # Chạy phân tích và lưu dữ liệu
-        records_saved = analyzer.run_analysis(
-            symbol='BTC/USDT',
-            timeframe='1h',
-            count=1000
-        )
+        records_saved = analyzer.run_analysis(symbol='BTC/USDT', timeframe='1h', count=1000)
+        records_saved = analyzer.run_analysis(symbol='ETH/USDT', timeframe='1h', count=1000)
+        records_saved = analyzer.run_analysis(symbol='XRP/USDT', timeframe='1h', count=1000)
+        records_saved = analyzer.run_analysis(symbol='SOL/USDT', timeframe='1h', count=1000)
         
         return JSONResponse(
             status_code=200,
