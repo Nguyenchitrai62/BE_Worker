@@ -354,9 +354,7 @@ class RealtimeCryptoPatternAnalyzer:
         self.combine_signals(dt_signals, db_signals, hs_signals, ihs_signals)
         
         # Bước 5: Lưu vào MongoDB
-        records_saved = self.save_to_mongodb(symbol, timeframe)
-        
-        return records_saved
+        self.save_to_mongodb(symbol, timeframe)
 
 
 # ===============================
@@ -382,17 +380,15 @@ async def ping():
         analyzer = RealtimeCryptoPatternAnalyzer()
         
         # Chạy phân tích và lưu dữ liệu
-        records_saved = analyzer.run_analysis(symbol='BTC/USDT', timeframe='1h', count=1000)
-        records_saved = analyzer.run_analysis(symbol='ETH/USDT', timeframe='1h', count=1000)
-        records_saved = analyzer.run_analysis(symbol='XRP/USDT', timeframe='1h', count=1000)
-        records_saved = analyzer.run_analysis(symbol='SOL/USDT', timeframe='1h', count=1000)
+        analyzer.run_analysis(symbol='BTC/USDT', timeframe='1h', count=1000)
+        analyzer.run_analysis(symbol='ETH/USDT', timeframe='1h', count=1000)
+        analyzer.run_analysis(symbol='XRP/USDT', timeframe='1h', count=1000)
+        analyzer.run_analysis(symbol='SOL/USDT', timeframe='1h', count=1000)
         
         return JSONResponse(
             status_code=200,
             content={
-                "message": "DONE",
-                "timestamp": datetime.now().isoformat(),
-                "records_saved": records_saved
+                "message": "DONE"
             }
         )
             
