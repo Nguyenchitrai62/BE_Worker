@@ -335,26 +335,27 @@ class RealtimeCryptoPatternAnalyzer:
         except Exception as e:
             raise Exception(f"Error saving to MongoDB: {e}")
     
-    def run_analysis(self, symbol='BTC/USDT', timeframe='1h', count=1000):
+    def run_analysis( self, symbol='BTC/USDT', timeframe='1h', count=1000, order_realtime=1, order_reliable=20, threshold=0.01, lookback_window=10):
         """Chạy phân tích và lưu vào MongoDB"""
-        
+
         # Bước 1: Crawl dữ liệu
         self.fetch_data(symbol, timeframe, count)
-        
+
         # Bước 2: Tìm đỉnh và đáy
-        self.find_peaks_and_troughs(order_realtime=1, order_reliable=20)
-        
+        self.find_peaks_and_troughs(order_realtime=order_realtime, order_reliable=order_reliable)
+
         # Bước 3: Nhận diện các mô hình
-        dt_signals = self.detect_realtime_double_top(threshold=0.01, lookback_window=10)
-        db_signals = self.detect_realtime_double_bottom(threshold=0.01, lookback_window=10)
-        hs_signals = self.detect_realtime_head_and_shoulders(threshold=0.01, lookback_window=10)
-        ihs_signals = self.detect_realtime_inverted_head_and_shoulders(threshold=0.01, lookback_window=10)
-        
+        dt_signals = self.detect_realtime_double_top(threshold=threshold, lookback_window=lookback_window)
+        db_signals = self.detect_realtime_double_bottom(threshold=threshold, lookback_window=lookback_window)
+        hs_signals = self.detect_realtime_head_and_shoulders(threshold=threshold, lookback_window=lookback_window)
+        ihs_signals = self.detect_realtime_inverted_head_and_shoulders(threshold=threshold, lookback_window=lookback_window)
+
         # Bước 4: Kết hợp tín hiệu
         self.combine_signals(dt_signals, db_signals, hs_signals, ihs_signals)
-        
+
         # Bước 5: Lưu vào MongoDB
-        self.save_to_mongodb(symbol, timeframe)
+        return self.save_to_mongodb(symbol, timeframe)
+
 
 
 # ===============================
@@ -380,10 +381,10 @@ async def ping():
         analyzer = RealtimeCryptoPatternAnalyzer()
         
         # Chạy phân tích và lưu dữ liệu
-        analyzer.run_analysis(symbol='BTC/USDT', timeframe='1h', count=1000)
-        analyzer.run_analysis(symbol='ETH/USDT', timeframe='1h', count=1000)
-        analyzer.run_analysis(symbol='XRP/USDT', timeframe='1h', count=1000)
-        analyzer.run_analysis(symbol='SOL/USDT', timeframe='1h', count=1000)
+        analyzer.run_analysis(symbol='BTC/USDT', timeframe='1h', order_realtime=1, order_reliable=20, threshold=0.01, lookback_window=10)
+        analyzer.run_analysis(symbol='ETH/USDT', timeframe='1h', order_realtime=1, order_reliable=20, threshold=0.01, lookback_window=10)
+        analyzer.run_analysis(symbol='XRP/USDT', timeframe='1h', order_realtime=1, order_reliable=20, threshold=0.01, lookback_window=10)
+        analyzer.run_analysis(symbol='SOL/USDT', timeframe='1h', order_realtime=1, order_reliable=20, threshold=0.01, lookback_window=10)
         
         return JSONResponse(
             status_code=200,
@@ -395,7 +396,9 @@ async def ping():
     except Exception as e:
         raise HTTPException(
             status_code=500, 
-            detail=f"Error: {str(e)}"
+            content={
+                "message": "ERROR"
+            }
         )
 
 
