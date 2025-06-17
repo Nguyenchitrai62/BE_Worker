@@ -12,7 +12,7 @@ print("Thời gian hiện tại:", current_time)
 
 symbol = 'BTC/USDT'
 limit = 1000  
-total_limit = 10000  
+total_limit = 50000  
 num_requests = total_limit // limit  
 
 ohlcv = []

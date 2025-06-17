@@ -8,6 +8,7 @@ class RealtimeChartPatternAnalyzer:
     def __init__(self, csv_file='OHLCV.csv'):
         self.df = pd.read_csv(csv_file, parse_dates=['Date'])
         self.df['signal'] = -1  # Mặc định signal là -1
+        self.df['price_distance'] = np.nan  # Thêm cột lưu khoảng cách giá
         
         # Đỉnh/đáy order=1 (realtime)
         self.realtime_highs = None
@@ -48,6 +49,7 @@ class RealtimeChartPatternAnalyzer:
             raise ValueError("Cần chạy find_peaks_and_troughs() trước")
         
         signals = np.full(len(self.df), -1)
+        price_distances = np.full(len(self.df), np.nan)
         
         # Duyệt qua các đỉnh realtime
         for current_high_idx in self.realtime_highs:
@@ -66,9 +68,10 @@ class RealtimeChartPatternAnalyzer:
             for reliable_high_idx in reliable_highs_before:
                 reliable_high_price = self.df['High'].iloc[reliable_high_idx]
                 
-                # Kiểm tra điều kiện Double Top
+                # Tính khoảng cách giá
                 price_diff = abs(current_high_price - reliable_high_price) / reliable_high_price
                 
+                # Kiểm tra điều kiện Double Top
                 if price_diff <= threshold:
                     # Kiểm tra có đáy ở giữa không (để xác nhận là double top)
                     valley_between = self.find_valley_between(reliable_high_idx, current_high_idx)
@@ -77,9 +80,10 @@ class RealtimeChartPatternAnalyzer:
                         # Tín hiệu bán xuất hiện ngay sau đỉnh hiện tại
                         if current_high_idx + 1 < len(self.df):
                             signals[current_high_idx + 1] = 0  # Tín hiệu bán
+                            price_distances[current_high_idx + 1] = price_diff  # Lưu khoảng cách
                         break
         
-        return signals
+        return signals, price_distances
     
     def detect_realtime_double_bottom(self, threshold=0.02, lookback_window=50):
         """
@@ -91,6 +95,7 @@ class RealtimeChartPatternAnalyzer:
             raise ValueError("Cần chạy find_peaks_and_troughs() trước")
         
         signals = np.full(len(self.df), -1)
+        price_distances = np.full(len(self.df), np.nan)
         
         # Duyệt qua các đáy realtime
         for current_low_idx in self.realtime_lows:
@@ -109,9 +114,10 @@ class RealtimeChartPatternAnalyzer:
             for reliable_low_idx in reliable_lows_before:
                 reliable_low_price = self.df['Low'].iloc[reliable_low_idx]
                 
-                # Kiểm tra điều kiện Double Bottom
+                # Tính khoảng cách giá
                 price_diff = abs(current_low_price - reliable_low_price) / reliable_low_price
                 
+                # Kiểm tra điều kiện Double Bottom
                 if price_diff <= threshold:
                     # Kiểm tra có đỉnh ở giữa không (để xác nhận là double bottom)
                     peak_between = self.find_peak_between(reliable_low_idx, current_low_idx)
@@ -120,9 +126,10 @@ class RealtimeChartPatternAnalyzer:
                         # Tín hiệu mua xuất hiện ngay sau đáy hiện tại
                         if current_low_idx + 1 < len(self.df):
                             signals[current_low_idx + 1] = 1  # Tín hiệu mua
+                            price_distances[current_low_idx + 1] = price_diff  # Lưu khoảng cách
                         break
         
-        return signals
+        return signals, price_distances
     
     def find_valley_between(self, start_idx, end_idx):
         """Tìm đáy thấp nhất giữa hai điểm"""
@@ -148,116 +155,13 @@ class RealtimeChartPatternAnalyzer:
         max_idx = peak_section.idxmax()
         return max_idx
     
-    def detect_realtime_head_and_shoulders(self, threshold=0.02, lookback_window=100):
-        """
-        Phát hiện Head and Shoulders với logic thực tế:
-        - Sử dụng đỉnh realtime hiện tại làm right shoulder
-        - Tìm head và left shoulder từ các đỉnh reliable trước đó
-        """
-        if self.realtime_highs is None or self.reliable_highs is None:
-            raise ValueError("Cần chạy find_peaks_and_troughs() trước")
-        
-        signals = np.full(len(self.df), -1)
-        
-        # Duyệt qua các đỉnh realtime làm right shoulder
-        for right_shoulder_idx in self.realtime_highs:
-            right_shoulder_price = self.df['High'].iloc[right_shoulder_idx]
-            
-            # Tìm các đỉnh reliable trước đó để làm head và left shoulder
-            reliable_highs_before = [
-                idx for idx in self.reliable_highs 
-                if right_shoulder_idx - lookback_window <= idx < right_shoulder_idx
-            ]
-            
-            if len(reliable_highs_before) < 2:
-                continue
-            
-            # Thử các kết hợp head và left shoulder
-            for i in range(len(reliable_highs_before) - 1):
-                for j in range(i + 1, len(reliable_highs_before)):
-                    left_shoulder_idx = reliable_highs_before[i]
-                    head_idx = reliable_highs_before[j]
-                    
-                    left_shoulder_price = self.df['High'].iloc[left_shoulder_idx]
-                    head_price = self.df['High'].iloc[head_idx]
-                    
-                    # Kiểm tra điều kiện H&S
-                    if (head_price > left_shoulder_price and 
-                        head_price > right_shoulder_price and
-                        abs(left_shoulder_price - right_shoulder_price) / head_price <= threshold):
-                        
-                        # Tìm neckline
-                        neck_left = self.find_valley_between(left_shoulder_idx, head_idx)
-                        neck_right = self.find_valley_between(head_idx, right_shoulder_idx)
-                        
-                        if neck_left is not None and neck_right is not None:
-                            # Tín hiệu bán xuất hiện ngay sau right shoulder
-                            if right_shoulder_idx + 1 < len(self.df):
-                                signals[right_shoulder_idx + 1] = 0  # Tín hiệu bán
-                            break
-                
-                if signals[right_shoulder_idx + 1] == 0:  # Đã tìm thấy pattern
-                    break
-        
-        return signals
-    
-    def detect_realtime_inverted_head_and_shoulders(self, threshold=0.02, lookback_window=100):
-        """
-        Phát hiện Inverted Head and Shoulders với logic thực tế:
-        - Sử dụng đáy realtime hiện tại làm right shoulder
-        - Tìm head và left shoulder từ các đáy reliable trước đó
-        """
-        if self.realtime_lows is None or self.reliable_lows is None:
-            raise ValueError("Cần chạy find_peaks_and_troughs() trước")
-        
-        signals = np.full(len(self.df), -1)
-        
-        # Duyệt qua các đáy realtime làm right shoulder
-        for right_shoulder_idx in self.realtime_lows:
-            right_shoulder_price = self.df['Low'].iloc[right_shoulder_idx]
-            
-            # Tìm các đáy reliable trước đó để làm head và left shoulder
-            reliable_lows_before = [
-                idx for idx in self.reliable_lows 
-                if right_shoulder_idx - lookback_window <= idx < right_shoulder_idx
-            ]
-            
-            if len(reliable_lows_before) < 2:
-                continue
-            
-            # Thử các kết hợp head và left shoulder
-            for i in range(len(reliable_lows_before) - 1):
-                for j in range(i + 1, len(reliable_lows_before)):
-                    left_shoulder_idx = reliable_lows_before[i]
-                    head_idx = reliable_lows_before[j]
-                    
-                    left_shoulder_price = self.df['Low'].iloc[left_shoulder_idx]
-                    head_price = self.df['Low'].iloc[head_idx]
-                    
-                    # Kiểm tra điều kiện Inverted H&S
-                    if (head_price < left_shoulder_price and 
-                        head_price < right_shoulder_price and
-                        abs(left_shoulder_price - right_shoulder_price) / head_price <= threshold):
-                        
-                        # Tìm neckline
-                        neck_left = self.find_peak_between(left_shoulder_idx, head_idx)
-                        neck_right = self.find_peak_between(head_idx, right_shoulder_idx)
-                        
-                        if neck_left is not None and neck_right is not None:
-                            # Tín hiệu mua xuất hiện ngay sau right shoulder
-                            if right_shoulder_idx + 1 < len(self.df):
-                                signals[right_shoulder_idx + 1] = 1  # Tín hiệu mua
-                            break
-                
-                if signals[right_shoulder_idx + 1] == 1:  # Đã tìm thấy pattern
-                    break
-        
-        return signals
-    
-    def combine_signals(self, *signal_arrays):
-        """Kết hợp nhiều mảng tín hiệu"""
-        for signals in signal_arrays:
+    def combine_signals(self, signal_arrays_with_distances):
+        """Kết hợp nhiều mảng tín hiệu và khoảng cách"""
+        for signals, distances in signal_arrays_with_distances:
+            # Cập nhật signal
             self.df['signal'] = np.where(signals != -1, signals, self.df['signal'])
+            # Cập nhật price_distance
+            self.df['price_distance'] = np.where(~np.isnan(distances), distances, self.df['price_distance'])
     
     def validate_predictions(self, future_window=12):
         """Kiểm tra độ chính xác của dự đoán"""
@@ -286,18 +190,14 @@ class RealtimeChartPatternAnalyzer:
         accuracy = correct / total if total > 0 else 0
         return accuracy, total
     
-    def get_accuracy_report(self, dt_signals, db_signals, hs_signals, ihs_signals):
+    def get_accuracy_report(self, dt_signals, db_signals):
         """Tạo báo cáo độ chính xác cho các pattern"""
         dt_accuracy, dt_count = self.calculate_accuracy_for_pattern(dt_signals, 0)
         db_accuracy, db_count = self.calculate_accuracy_for_pattern(db_signals, 1)
-        hs_accuracy, hs_count = self.calculate_accuracy_for_pattern(hs_signals, 0)
-        ihs_accuracy, ihs_count = self.calculate_accuracy_for_pattern(ihs_signals, 1)
         
         return {
             'double_top': {'accuracy': dt_accuracy, 'count': dt_count},
-            'double_bottom': {'accuracy': db_accuracy, 'count': db_count},
-            'head_shoulders': {'accuracy': hs_accuracy, 'count': hs_count},
-            'inverted_head_shoulders': {'accuracy': ihs_accuracy, 'count': ihs_count}
+            'double_bottom': {'accuracy': db_accuracy, 'count': db_count}
         }
     
     def plot_realtime_analysis(self, num_sessions=500):
@@ -359,19 +259,17 @@ class RealtimeChartPatternAnalyzer:
         print(f"  - {len(self.reliable_lows)} đáy reliable (order={order_reliable})")
         
         # Bước 2: Nhận diện các mô hình
-        dt_signals = self.detect_realtime_double_top(threshold, lookback_window)
-        db_signals = self.detect_realtime_double_bottom(threshold, lookback_window)
-        hs_signals = self.detect_realtime_head_and_shoulders(threshold, lookback_window)
-        ihs_signals = self.detect_realtime_inverted_head_and_shoulders(threshold, lookback_window)
+        dt_signals, dt_distances = self.detect_realtime_double_top(threshold, lookback_window)
+        db_signals, db_distances = self.detect_realtime_double_bottom(threshold, lookback_window)
         
         # Bước 3: Kết hợp tín hiệu
-        self.combine_signals(dt_signals, db_signals, hs_signals, ihs_signals)
+        self.combine_signals([(dt_signals, dt_distances), (db_signals, db_distances)])
         
         # Bước 4: Kiểm tra độ chính xác
         self.validate_predictions(future_window)
         
         # Bước 5: Tạo báo cáo
-        report = self.get_accuracy_report(dt_signals, db_signals, hs_signals, ihs_signals)
+        report = self.get_accuracy_report(dt_signals, db_signals)
         
         return report
     
@@ -395,14 +293,6 @@ def print_realtime_analysis_report(report):
     print(f"  - Số lần phát hiện: {report['double_bottom']['count']}")
     print(f"  - Độ chính xác: {report['double_bottom']['accuracy']:.2%}")
     
-    print(f"\nHead and Shoulders (Tín hiệu bán):")
-    print(f"  - Số lần phát hiện: {report['head_shoulders']['count']}")
-    print(f"  - Độ chính xác: {report['head_shoulders']['accuracy']:.2%}")
-    
-    print(f"\nInverted Head and Shoulders (Tín hiệu mua):")
-    print(f"  - Số lần phát hiện: {report['inverted_head_shoulders']['count']}")
-    print(f"  - Độ chính xác: {report['inverted_head_shoulders']['accuracy']:.2%}")
-    
     # Tính tổng kết
     total_signals = sum([report[pattern]['count'] for pattern in report])
     if total_signals > 0:
@@ -425,7 +315,7 @@ def main():
     
     # Chạy phân tích realtime với các tham số
     report = analyzer.run_realtime_analysis(
-        order_realtime=1,      # Đỉnh/đáy realtime
+        order_realtime=2,      # Đỉnh/đáy realtime
         order_reliable=20,     # Đỉnh/đáy đáng tin cậy
         threshold=0.02,        # Ngưỡng chênh lệch giá 2%
         lookback_window=10,    # Tìm kiếm trong 50 nến trước
@@ -439,7 +329,7 @@ def main():
     analyzer.save_results()
     
     # Vẽ biểu đồ
-    # analyzer.plot_realtime_analysis(num_sessions=1000)
+    analyzer.plot_realtime_analysis(num_sessions=1000)
 
 if __name__ == "__main__":
     main()
