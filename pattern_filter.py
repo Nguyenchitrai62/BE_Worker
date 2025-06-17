@@ -315,7 +315,7 @@ def main():
     
     # Chạy phân tích realtime với các tham số
     report = analyzer.run_realtime_analysis(
-        order_realtime=2,      # Đỉnh/đáy realtime
+        order_realtime=1,      # Đỉnh/đáy realtime
         order_reliable=20,     # Đỉnh/đáy đáng tin cậy
         threshold=0.02,        # Ngưỡng chênh lệch giá 2%
         lookback_window=10,    # Tìm kiếm trong 50 nến trước

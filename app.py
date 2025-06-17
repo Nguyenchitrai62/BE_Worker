@@ -382,7 +382,7 @@ async def ping():
         
         # Chạy phân tích và lưu dữ liệu
         analyzer.run_analysis(symbol='BTC/USDT', timeframe='1h', order_realtime=1, order_reliable=20, threshold=0.01, lookback_window=10)
-        analyzer.run_analysis(symbol='ETH/USDT', timeframe='1h', order_realtime=1, order_reliable=20, threshold=0.03, lookback_window=10)
+        analyzer.run_analysis(symbol='ETH/USDT', timeframe='1h', order_realtime=1, order_reliable=20, threshold=0.02, lookback_window=10)
         analyzer.run_analysis(symbol='SOL/USDT', timeframe='1h', order_realtime=1, order_reliable=20, threshold=0.02, lookback_window=10)
         analyzer.run_analysis(symbol='XRP/USDT', timeframe='1h', order_realtime=1, order_reliable=20, threshold=0.015, lookback_window=10)
         

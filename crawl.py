@@ -10,9 +10,9 @@ binance = ccxt.binance({
 current_time = int(datetime.now().timestamp() * 1000)
 print("Thời gian hiện tại:", current_time)
 
-symbol = 'BTC/USDT'
+symbol = 'ETH/USDT'
 limit = 1000  
-total_limit = 50000  
+total_limit = 20000  
 num_requests = total_limit // limit  
 
 ohlcv = []
