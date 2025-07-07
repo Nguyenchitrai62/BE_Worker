@@ -67,12 +67,12 @@ class RealtimeCryptoPatternAnalyzer:
             raise ValueError("Cần fetch dữ liệu trước")
             
         # Đỉnh/đáy realtime (order=1)
-        self.realtime_highs = argrelextrema(self.df['High'].values, np.greater, order=order_realtime)[0]
-        self.realtime_lows = argrelextrema(self.df['Low'].values, np.less, order=order_realtime)[0]
+        self.realtime_highs = argrelextrema(self.df['Close'].values, np.greater, order=order_realtime)[0]
+        self.realtime_lows = argrelextrema(self.df['Close'].values, np.less, order=order_realtime)[0]
         
         # Đỉnh/đáy đáng tin cậy (order=5)
-        self.reliable_highs = argrelextrema(self.df['High'].values, np.greater, order=order_reliable)[0]
-        self.reliable_lows = argrelextrema(self.df['Low'].values, np.less, order=order_reliable)[0]
+        self.reliable_highs = argrelextrema(self.df['Close'].values, np.greater, order=order_reliable)[0]
+        self.reliable_lows = argrelextrema(self.df['Close'].values, np.less, order=order_reliable)[0]
         
         return {
             'realtime_highs': self.realtime_highs,
